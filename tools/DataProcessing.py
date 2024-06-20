@@ -20,10 +20,10 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
             return pd.DataFrame(chunk_df)
         #return pd.DataFrame(df)
     
-    if cut: 
-        df = ROOT.RDataFrame(key, inputRootFiles).Filter(cut)
-    else: 
-        df = ROOT.RDataFrame(key, inputRootFiles)
+    # Create the RDataFrame with or without a cut
+    df = ROOT.RDataFrame(key, inputRootFiles)
+    if cut:
+        df = df.Filter(cut)
 
     
 
