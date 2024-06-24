@@ -2,6 +2,7 @@ import ROOT
 import pandas as pd
 import numpy as np
 import concurrent.futures
+from tqdm import tqdm
 
 def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=None, chunk_size=100000, max_workers=None):
     """
@@ -21,29 +22,40 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
         #return pd.DataFrame(df)
     
     # Create the RDataFrame with or without a cut
-    df = ROOT.RDataFrame(key, inputRootFiles)
     if cut:
-        df = df.Filter(cut)
+        df = ROOT.RDataFrame(key, inputRootFiles).Filter(cut)
+    else: df = ROOT.RDataFrame(key, inputRootFiles)
 
-    
-
+    # Get the number of entries in the dataframe
     num_entries = df.Count().GetValue()
     if num_entries == 0:
-        print(f'Number of entries in {key} = 0')
+        print(f'Number of entries in {inputRootFiles} = 0')
         if columns: df = df.AsNumpy(columns=columns)
         else: df = df.AsNumpy()
         data = pd.DataFrame(df)
-
+    
+    # Split the dataframe into chunks
     else: 
         num_chunks = (num_entries + chunk_size - 1) // chunk_size  # Ceiling division
         chunk_ranges = [(i * chunk_size, min((i + 1) * chunk_size, num_entries)) for i in range(num_chunks)]
 
         # Use ThreadPoolExecutor to process chunks in parallel
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            data_list = list(executor.map(process_chunk, chunk_ranges))
+        #with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+         #   data_list = list(executor.map(process_chunk, chunk_ranges))
 
         # Filter out any empty DataFrames
-        data_list = [chunk for chunk in data_list if not chunk.empty]
+        #data_list = [chunk for chunk in data_list if not chunk.empty]
+
+        with tqdm(total=num_entries, desc=f"Processing {num_entries} entries") as pbar:
+            data_list = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                for chunk_range in chunk_ranges:
+                    future = executor.submit(process_chunk, chunk_range)
+                    chunk_data = future.result()
+                    if not chunk_data.empty:
+                        data_list.append(chunk_data)
+                    pbar.update(chunk_range[1] - chunk_range[0])
+
 
         if not data_list:
             raise ValueError("No data was collected in the chunks.")
@@ -60,6 +72,14 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
 # import DataProcessing as dp
 # df = dp.getData(key='treename', inputRootFiles='../ntuple.root', columns=['Var_1', 'Var_2',...], cut='Var_1 > 5.2 && Var_2 > 0.2')
 
+# Function to save data to csv
+def save_to_csv(data, path:str, key:str=None):
+    if key:
+        print(f'Saving {key} to {path}')
+        data.to_csv(path+f'{key}.csv', index=False)
+    else:
+        print(f'Saving to {path}')
+        data.to_csv(path+'.csv', index=False)
 
 
 # Function to calculate dynamic limits for histograms
