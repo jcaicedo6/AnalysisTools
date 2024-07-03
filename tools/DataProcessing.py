@@ -15,11 +15,20 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
     """
     def process_chunk(chunk_range):
         start_idx, end_idx = chunk_range
-        if columns: chunk_df = df.Range(start_idx, end_idx).AsNumpy(columns=columns)
-        else: chunk_df = df.Range(start_idx, end_idx).AsNumpy()
+        pbar = tqdm(total=end_idx - start_idx, desc="Processing chunk", unit=" rows")
+        
+        if columns:
+            chunk_df = df.Range(start_idx, end_idx).AsNumpy(columns=columns)
+        else:
+            chunk_df = df.Range(start_idx, end_idx).AsNumpy()
+            
         if chunk_df:
-            return pd.DataFrame(chunk_df)
-        #return pd.DataFrame(df)
+            chunk_data = pd.DataFrame(chunk_df)
+            pbar.update(len(chunk_data))  # Update progress bar with number of rows processed
+            pbar.close()  # Close progress bar for this chunk
+            return chunk_data
+        pbar.close()  # Close progress bar for this chunk if no data
+        return pd.DataFrame()
     
     # Create the RDataFrame with or without a cut
     if cut:
@@ -46,15 +55,12 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
         # Filter out any empty DataFrames
         #data_list = [chunk for chunk in data_list if not chunk.empty]
 
-        with tqdm(total=num_entries, desc=f"Processing {num_entries} entries") as pbar:
-            data_list = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                for chunk_range in chunk_ranges:
-                    future = executor.submit(process_chunk, chunk_range)
-                    chunk_data = future.result()
-                    if not chunk_data.empty:
-                        data_list.append(chunk_data)
-                    pbar.update(chunk_range[1] - chunk_range[0])
+        data_list = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for chunk_range in chunk_ranges:
+                chunk_data = process_chunk(chunk_range)
+                if not chunk_data.empty:
+                    data_list.append(chunk_data)
 
 
         if not data_list:
@@ -116,7 +122,7 @@ def create_hist(df, leafs, name, title, nbinsx):
 
 #--------#
 
-#hist = dp.create_hist(df=df, leafs=leafs, name=[x+"_sig" for x in name], title=leafs, nbinsx=nbins)
+#vhist = dp.create_hist(df=df, leafs=leafs, name=[x+"_sig" for x in name], title=leafs, nbinsx=nbins)
 
 def BestCutsPandasDF(df, leafsToCut, leafs, cuts):
     """
