@@ -35,6 +35,10 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
         df = ROOT.RDataFrame(key, inputRootFiles).Filter(cut)
     else: df = ROOT.RDataFrame(key, inputRootFiles)
 
+    # Cache the dataframe if columns are specified
+    if columns:
+        df = df.Cache(columns) 
+
     # Get the number of entries in the dataframe
     num_entries = df.Count().GetValue()
     if num_entries == 0:
@@ -49,15 +53,10 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
         chunk_ranges = [(i * chunk_size, min((i + 1) * chunk_size, num_entries)) for i in range(num_chunks)]
 
         # Use ThreadPoolExecutor to process chunks in parallel
-        #with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-         #   data_list = list(executor.map(process_chunk, chunk_ranges))
-
-        # Filter out any empty DataFrames
-        #data_list = [chunk for chunk in data_list if not chunk.empty]
-
         data_list = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for chunk_range in chunk_ranges:
+                print(f"Processing chunk {chunk_range[0]}-{chunk_range[1]}")
                 chunk_data = process_chunk(chunk_range)
                 if not chunk_data.empty:
                     data_list.append(chunk_data)
@@ -70,8 +69,10 @@ def getData(key:str, inputRootFiles:str, columns:list=None, cut=None, fraction=N
     if fraction: 
         if fraction > 1:
             data = data.sample(frac=fraction, replace=True, random_state=1)
+            data.reset_index(drop=True, inplace=True)
         else:
-            data = data.sample(frac=fraction, random_state=1)
+            data = data.sample(frac=fraction, random_state=1, ignore_index=True)
+            data.reset_index(drop=True, inplace=True)
 
     return data
 #---------#
