@@ -108,7 +108,8 @@ def create_hist(df, leafs, name, title, nbinsx):
     :param nbinsx: Number of bins.
     '''
     df_dic = {key: df[key].values for key in leafs}
-    rdf = ROOT.RDF.MakeNumpyDataFrame(df_dic)
+    #rdf = ROOT.RDF.MakeNumpyDataFrame(df_dic)
+    rdf = ROOT.RDF.FromNumpy(df_dic)
     
     hist = []
     for i, leaf in enumerate(leafs):
