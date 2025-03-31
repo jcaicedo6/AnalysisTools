@@ -3,9 +3,9 @@
 This a small library developed to help HEP analyzers that work with ROOT files and want to charge this files in a python environment where is more friendly use libraries like PanDas, NumPy, etc.
 
 ## `DataProcessing` module
-In this module we can find varuios useful function that help us to facilite the work with big datasets.
+In this module we can find various useful functions that help us to facilite the work with big datasets.
 ### Load DATA
-- `getData()` function read the ROOT files, convert them into RootDataFrames and is capable to implement suitbale cuts previously known by the user (to reduce the memory used), transform the RDataFrames in PanDas DataFrames selecting or not the leafs desired and process this step using threads (parellising the process), and finally create the Pandas Data Frames.
+- `getData()` function read the ROOT files, convert them into RootDataFrames and is capable to implement suitable cuts previously known by the user (to reduce the memory used), transform the RDataFrames in PanDas DataFrames selecting or not the leafs desired. This process uses threads (parellising the process), and finally create the Pandas Data Frames.
 
 ### Create ROOT histograms
 
